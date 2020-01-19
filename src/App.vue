@@ -1,7 +1,12 @@
 <template>
   <div id="app">
-    <img alt="Vue logo" :src="yaoEr" width="400" id="img">
-    <canvas id="canvas"/>
+    <input type="file" placeholder="上传图片" @change="fileChange">
+    <img alt="Vue logo" :src="chooseImg" width="400" id="img">
+    <canvas id="canvas" ref="canvas"/>
+    <button @click="saveImg" class="button">保存</button>
+    <div class="loading" v-show="showLoading" :class="{little: showLittleLading}">
+      <img :src="loading" alt="">
+    </div>
   </div>
 </template>
 
@@ -9,6 +14,82 @@
   import * as faceapi from 'face-api.js'
   import hat from './assets/images/hat.png'
   import huzi from './assets/images/huzi.png'
+
+  export default {
+    name: 'app',
+    data () {
+      return {
+        // yaoEr: require('@/assets/images/QQ截图20200105185155.png'),
+        chooseImg: require('@/assets/images/face-dog.png'),
+        loading: require('@/assets/images/loading.gif'),
+        showLoading: true,
+        showLittleLading: false
+      }
+    },
+    created () {
+      this.init()
+    },
+    methods: {
+      async init () {
+        // 初始化face-api 这里使用ssd moblile 模型加载
+        await faceapi.nets.ssdMobilenetv1.load('/weights')
+        // 加载Landmark模型 面部64点模型
+        await faceapi.loadFaceLandmarkModel('/weights')
+        this.showLoading = false
+      },
+      async addImg () {
+        let inputImg = document.getElementById('img')
+        let canvas = document.getElementById('canvas')
+        // 获取识别数据
+        const results = await faceapi.detectAllFaces(inputImg).withFaceLandmarks()
+        // 使canvas和图片大小一致
+        faceapi.matchDimensions(canvas, inputImg)
+        // 把识别数据根据 展示图片的大小 做转换
+        const resizedResults = faceapi.resizeResults(results, inputImg)
+        const info = getHatInfo(resizedResults)
+        drawing(canvas, {
+          info,
+          imgSrc: inputImg.src,
+          width: canvas.width,
+          height: canvas.height
+        })
+        this.showLoading = false
+        this.showLittleLading = false
+        // setTimeout(() => {
+        //   // 直接画出识别的特征点
+        //   faceapi.draw.drawFaceLandmarks(canvas, resizedResults)
+        //   // 画框
+        //   // const drawOptions = {
+        //   //   label: 'Hello I am a dog!',
+        //   //   lineWidth: 2
+        //   // }
+        //   // const drawBox = new faceapi.draw.DrawBox(resizedResults[0].detection.box, drawOptions)
+        //   // drawBox.draw(canvas)
+        // }, 500)
+      },
+      fileChange (e) {
+        this.showLoading = true
+        this.showLittleLading = true
+        const file = e.target.files[0]
+        const reader = new FileReader()
+        reader.onloadend = url => {
+          this.chooseImg = reader.result
+          this.$nextTick(() => {
+            this.addImg()
+          })
+        }
+        reader.readAsDataURL(file)
+      },
+      saveImg () {
+        const url = this.$refs.canvas.toDataURL('image/png')
+        let a = document.createElement('a')
+        a.href = url
+        a.setAttribute('download', 'face-img')
+        a.click()
+        a = null
+      }
+    }
+  }
   /**
    * 获取中间的点
    * @param {*} points
@@ -241,61 +322,37 @@
       }
     }, 100)
   }
-
-  export default {
-    name: 'app',
-    data () {
-      return {
-        yaoEr: require('@/assets/images/QQ截图20200105185155.png')
-      }
-    },
-    created () {
-      this.init()
-    },
-    methods: {
-      async init () {
-        // 初始化face-api 这里使用ssd moblile 模型加载
-        await faceapi.nets.ssdMobilenetv1.load('/weights')
-        // 加载Landmark模型 面部64点模型
-        await faceapi.loadFaceLandmarkModel('/weights')
-        let inputImg = document.getElementById('img')
-        let canvas = document.getElementById('canvas')
-        // 获取识别数据
-        const results = await faceapi.detectAllFaces(inputImg).withFaceLandmarks()
-        // 使canvas和图片大小一致
-        faceapi.matchDimensions(canvas, inputImg)
-        // 把识别数据根据 展示图片的大小 做转换
-        const resizedResults = faceapi.resizeResults(results, inputImg)
-        const info = getHatInfo(resizedResults)
-        drawing(canvas, {
-          info,
-          imgSrc: inputImg.src,
-          width: canvas.width,
-          height: canvas.height
-        })
-        // setTimeout(() => {
-        //   // 直接画出识别的特征点
-        //   faceapi.draw.drawFaceLandmarks(canvas, resizedResults)
-        //   // 画框
-        //   // const drawOptions = {
-        //   //   label: 'Hello I am a dog!',
-        //   //   lineWidth: 2
-        //   // }
-        //   // const drawBox = new faceapi.draw.DrawBox(resizedResults[0].detection.box, drawOptions)
-        //   // drawBox.draw(canvas)
-        // }, 500)
-      }
-    }
-  }
 </script>
 
 <style lang="less">
-  #app {
-    font-family: 'Avenir', Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-align: center;
-    color: #2c3e50;
-    margin-top: 60px;
+  input {
+    display: block;
+    margin: 20px auto;
+  }
+  .button {
+    display: block;
+    margin: 20px auto;
+  }
+  .loading {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0,0,0,.9);
+    img {
+      width: 300px;
+      height: 300px;
+    }
+    &.little {
+      background-color: transparent;
+      img {
+        width: 200px;
+        height: 200px;
+      }
+    }
   }
 </style>
