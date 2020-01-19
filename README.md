@@ -12,6 +12,12 @@ https://github.com/hk029/christmas-hat
 
 
 
+![](./src/assets/images/QQ截图20200119215023.png)
+
+
+
+
+
 ## Project setup
 ```
 npm install
